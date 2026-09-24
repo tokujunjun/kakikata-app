@@ -1,4 +1,4 @@
-# たのしく かきかた　れんしゅう
+# かきかたれんしゅうアプリ
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
