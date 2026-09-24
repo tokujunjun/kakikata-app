@@ -1,4 +1,4 @@
-# kakikata-app
+# たのしくかきかたれんしゅう
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
