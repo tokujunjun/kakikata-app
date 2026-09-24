@@ -1,4 +1,4 @@
-# かきかた れんしゅう アプリ
+# kakikata-app
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
