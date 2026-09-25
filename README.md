@@ -2,24 +2,24 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>たのしく かきかた れんしゅう！</title>
-    <!-- Tailwind CSS CDN -->
+    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- FontAwesome Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <!-- Canvas Confetti for Celebration -->
-    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
-    <!-- Google Fonts -->
-    <link href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@400;700;800&display=swap" rel="stylesheet">
-
+    <!-- Canvas Confetti for celebration -->
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.2/dist/confetti.browser.min.js"></script>
     <style>
+        @import url('https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@400;700;800;900&display=swap');
+        
         body {
-            font-family: 'M PLUS Rounded 1c', sans-serif;
+            font-family: 'M PLUS Rounded 1c', 'Hiragino Kaku Gothic ProN', sans-serif;
+            touch-action: manipulation;
             user-select: none;
             -webkit-user-select: none;
-            touch-action: manipulation;
         }
+
         /* Custom scrollbar for character selection grid */
         .char-grid::-webkit-scrollbar {
             width: 8px;
@@ -32,15 +32,14 @@
             background: #cbd5e1;
             border-radius: 8px;
         }
-        .char-grid::-webkit-scrollbar-thumb:hover {
-            background: #94a3b8;
-        }
+
         /* Canvas layer stacking */
         .canvas-container {
             position: relative;
             width: 100%;
-            max-width: 360px;
+            max-width: 320px;
             aspect-ratio: 1 / 1;
+            touch-action: none; /* スマホ描画時の画面移動を防止 */
         }
         .canvas-layer {
             position: absolute;
@@ -50,58 +49,76 @@
             height: 100%;
             border-radius: 1rem;
         }
+
+        /* Hide scrollbar for mobile character bar */
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .no-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+
         /* Rainbow pen effect gradient */
         .rainbow-bg {
-            background: linear-gradient(135deg, #ff0000, #ff7f00, #ffff00, #00ff00, #0000ff, #4b0082, #9400d3);
+            background: linear-gradient(135deg, #ff0000, #ff7f00, #ffff00, #00ff00, #0000ff, #8b00ff);
         }
-        /* Bouncing animation for result modal */
-        @keyframes popIn {
-            0% { transform: scale(0.3); opacity: 0; }
-            70% { transform: scale(1.1); opacity: 1; }
-            100% { transform: scale(1); }
+
+        @keyframes bounce-gentle {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-4px); }
         }
-        .pop-in {
-            animation: popIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+        .animate-bounce-gentle {
+            animation: bounce-gentle 2s infinite ease-in-out;
         }
     </style>
 </head>
-<body class="bg-amber-50 min-h-screen text-slate-800 flex flex-col justify-between">
+<body class="bg-amber-50 min-h-screen flex flex-col justify-between text-slate-800">
 
-    <header class="bg-amber-400 text-white shadow-md p-3 sm:p-4 text-center sticky top-0 z-20">
-        <div class="max-w-4xl mx-auto flex justify-between items-center">
-            <div class="flex items-center space-x-1.5 sm:space-x-2">
-                <span class="text-lg sm:text-3xl">✏️</span>
-                <h1 class="text-base sm:text-2xl font-extrabold tracking-wide drop-shadow-sm whitespace-nowrap">たのしく かきかた れんしゅう！</h1>
-            </div>
-            <!-- Audio toggle button -->
-            <div class="flex items-center space-x-2">
-                <button id="soundToggleBtn" onclick="toggleSound()" class="bg-amber-500 hover:bg-amber-600 text-white px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-full font-bold text-xs sm:text-sm shadow transition flex items-center space-x-1">
-                    <i class="fas fa-volume-high" id="soundIcon"></i>
-                    <span id="soundText" class="hidden sm:inline">おと ON</span>
-                </button>
-            </div>
+    <!-- Application Top Header -->
+    <header class="bg-white border-b-4 border-amber-300 px-3 py-2 sm:px-6 sm:py-3 shadow-sm flex items-center justify-between sticky top-0 z-20">
+        <div class="flex items-center space-x-2">
+            <span class="text-2xl sm:text-3xl animate-bounce-gentle">✏️</span>
+            <h1 class="text-base sm:text-2xl font-black text-amber-900 tracking-wide">
+                たのしく かきかた れんしゅう！
+            </h1>
         </div>
+        <button onclick="speakCurrentChar()" class="bg-amber-100 hover:bg-amber-200 active:scale-95 text-amber-900 px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-full text-xs sm:text-sm font-bold border border-amber-300 transition flex items-center space-x-1">
+            <i class="fas fa-volume-high text-amber-600"></i>
+            <span>おと</span>
+        </button>
     </header>
 
-    <main class="max-w-4xl w-full mx-auto p-2 sm:p-4 flex-grow flex flex-col items-center justify-start space-y-4">
+    <main class="max-w-4xl w-full mx-auto p-2 sm:p-4 flex-grow flex flex-col items-center justify-start space-y-2 sm:space-y-4">
         
-        <!-- Mode Switcher Tabs (Hiragana / Katakana / Numbers) -->
-        <div class="flex rounded-2xl bg-amber-200/70 p-1.5 w-full max-w-md shadow-inner">
-            <button id="tabHiragana" onclick="switchCategory('hiragana')" class="flex-1 py-2 rounded-xl font-bold text-base sm:text-lg transition-all text-amber-900 bg-white shadow-sm">
+        <!-- Category Tabs (Hiragana / Katakana / Numbers) -->
+        <div class="flex rounded-2xl bg-amber-200/80 p-1 w-full max-w-md shadow-inner text-sm sm:text-base">
+            <button id="tabHiragana" onclick="switchCategory('hiragana')" class="flex-1 py-1.5 rounded-xl font-bold transition-all text-amber-900 bg-white shadow-sm">
                 ひらがな
             </button>
-            <button id="tabKatakana" onclick="switchCategory('katakana')" class="flex-1 py-2 rounded-xl font-bold text-base sm:text-lg transition-all text-amber-800 hover:bg-white/50">
+            <button id="tabKatakana" onclick="switchCategory('katakana')" class="flex-1 py-1.5 rounded-xl font-bold transition-all text-amber-800 hover:bg-white/50">
                 カタカナ
             </button>
-            <button id="tabNumbers" onclick="switchCategory('numbers')" class="flex-1 py-2 rounded-xl font-bold text-base sm:text-lg transition-all text-amber-800 hover:bg-white/50">
+            <button id="tabNumbers" onclick="switchCategory('numbers')" class="flex-1 py-1.5 rounded-xl font-bold transition-all text-amber-800 hover:bg-white/50">
                 すうじ
             </button>
         </div>
 
-        <div class="grid grid-cols-1 md:grid-cols-12 gap-4 w-full items-start">
+        <!-- Mobile Horizontal Character Selector (Visible on mobile) -->
+        <div class="w-full md:hidden bg-amber-100/90 p-2 rounded-2xl border border-amber-200 shadow-sm">
+            <div class="flex justify-between items-center mb-1 px-1">
+                <span class="text-xs font-bold text-amber-800"><i class="fas fa-hand-pointer mr-1"></i>もじを えらんでね</span>
+                <span class="text-[10px] text-amber-600 font-bold">← よこに スライド →</span>
+            </div>
+            <div id="mobileCharBar" class="flex overflow-x-auto space-x-1.5 py-1 px-0.5 no-scrollbar">
+                <!-- Mobile Buttons Dynamic Injection -->
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-12 gap-3 sm:gap-4 w-full items-start">
             
-            <!-- Left Panel: Character Selection Grid -->
-            <div class="md:col-span-5 bg-white p-3 sm:p-4 rounded-3xl shadow-md border-2 border-amber-200 flex flex-col h-[280px] md:h-[480px]">
+            <!-- Left Panel: Character Selection Grid (Desktop) -->
+            <div class="hidden md:flex md:col-span-5 bg-white p-3 sm:p-4 rounded-3xl shadow-md border-2 border-amber-200 flex-col h-[460px]">
                 <div class="flex justify-between items-center mb-2">
                     <span class="text-sm font-bold text-amber-700" id="pickerTitle">もじを えらんでね</span>
                     <button onclick="speakCurrentChar()" class="bg-amber-100 hover:bg-amber-200 text-amber-800 px-3 py-1 rounded-full text-xs font-bold transition flex items-center space-x-1">
@@ -111,65 +128,64 @@
                 </div>
                 <!-- Scrollable Character Grid -->
                 <div id="charGrid" class="char-grid grid grid-cols-5 gap-1.5 overflow-y-auto p-1 flex-grow">
-                    <!-- Dynamic Buttons Generated via JavaScript -->
+                    <!-- Dynamic Grid Buttons -->
                 </div>
             </div>
 
-            <div class="md:col-span-7 bg-white p-3 sm:p-5 rounded-3xl shadow-md border-2 border-amber-200 flex flex-col items-center justify-between space-y-3">
+            <!-- Right Panel: Canvas & Writing Area -->
+            <div class="md:col-span-7 bg-white p-2.5 sm:p-5 rounded-3xl shadow-md border-2 border-amber-200 flex flex-col items-center justify-between space-y-2.5 sm:space-y-3">
                 
-                <!-- Active letter status display -->
-                <div class="flex items-center justify-between w-full px-2">
+                <!-- Display Active Character & Speech Trigger -->
+                <div class="flex items-center justify-between w-full px-1 sm:px-2">
                     <div class="flex items-center space-x-2">
                         <span class="text-xs font-bold bg-amber-100 text-amber-800 px-2.5 py-1 rounded-full" id="currentCharType">ひらがな</span>
-                        <span class="text-3xl font-extrabold text-amber-600" id="currentCharDisplay">あ</span>
+                        <span class="text-2xl sm:text-3xl font-extrabold text-amber-600" id="currentCharDisplay">あ</span>
                     </div>
-                    <button onclick="speakCurrentChar()" class="bg-amber-400 hover:bg-amber-500 active:scale-95 text-white px-3 py-1.5 rounded-2xl font-bold text-sm shadow transition flex items-center space-x-1.5">
+                    <button onclick="speakCurrentChar()" class="bg-amber-400 hover:bg-amber-500 active:scale-95 text-white px-3 py-1.5 rounded-2xl font-bold text-xs sm:text-sm shadow transition flex items-center space-x-1.5">
                         <i class="fas fa-bullhorn"></i>
                         <span>よみあげる</span>
                     </button>
                 </div>
 
-                <!-- Canvas Stack (Grid / Template Guide / User Stroke) -->
-                <div class="canvas-container bg-amber-50 rounded-2xl shadow-inner border-4 border-amber-300 overflow-hidden cursor-crosshair">
-                    <canvas id="bgCanvas" width="360" height="360" class="canvas-layer"></canvas>
-                    <canvas id="templateCanvas" width="360" height="360" class="canvas-layer"></canvas>
-                    <canvas id="drawCanvas" width="360" height="360" class="canvas-layer"></canvas>
+                <!-- Canvas Notebook Area -->
+                <div id="canvasBox" class="canvas-container bg-amber-50 rounded-2xl shadow-inner border-4 border-amber-300 overflow-hidden cursor-crosshair">
+                    <canvas id="bgCanvas" width="320" height="320" class="canvas-layer"></canvas>
+                    <canvas id="templateCanvas" width="320" height="320" class="canvas-layer"></canvas>
+                    <canvas id="drawCanvas" width="320" height="320" class="canvas-layer"></canvas>
                 </div>
 
-                <!-- Pen Tool Options Toolbar -->
-                <div class="w-full flex flex-wrap items-center justify-between gap-2 pt-1 border-t border-slate-100">
-                    <!-- Colors -->
-                    <div class="flex items-center space-x-1.5 sm:space-x-2" id="colorPalette">
-                        <button onclick="setPenColor('#1e293b')" class="color-btn w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-slate-800 ring-2 ring-offset-2 ring-amber-500 transition-transform active:scale-90" data-color="#1e293b"></button>
-                        <button onclick="setPenColor('#ef4444')" class="color-btn w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-red-500 transition-transform active:scale-90" data-color="#ef4444"></button>
-                        <button onclick="setPenColor('#2563eb')" class="color-btn w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-blue-600 transition-transform active:scale-90" data-color="#2563eb"></button>
-                        <button onclick="setPenColor('#16a34a')" class="color-btn w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-green-600 transition-transform active:scale-90" data-color="#16a34a"></button>
-                        <button onclick="setPenColor('rainbow')" class="color-btn w-8 h-8 sm:w-9 sm:h-9 rounded-full rainbow-bg transition-transform active:scale-90 relative" data-color="rainbow" title="にじいろ">
-                            <span class="absolute -top-1 -right-1 text-xs">✨</span>
-                        </button>
+                <!-- Pen Tool Settings Toolbar -->
+                <div class="w-full flex flex-wrap items-center justify-between gap-1.5 sm:gap-2 pt-1 border-t border-slate-100">
+                    
+                    <!-- Color Palette -->
+                    <div class="flex items-center space-x-1 sm:space-x-1.5">
+                        <button onclick="setPenColor('#1e293b', this)" class="color-btn w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-slate-800 border-2 border-white shadow ring-2 ring-slate-800 transition active:scale-95" title="くろ"></button>
+                        <button onclick="setPenColor('#ef4444', this)" class="color-btn w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-red-500 border-2 border-white shadow transition active:scale-95" title="あか"></button>
+                        <button onclick="setPenColor('#3b82f6', this)" class="color-btn w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-blue-500 border-2 border-white shadow transition active:scale-95" title="あお"></button>
+                        <button onclick="setPenColor('#22c55e', this)" class="color-btn w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-green-500 border-2 border-white shadow transition active:scale-95" title="みどり"></button>
+                        <button onclick="setPenColor('rainbow', this)" class="color-btn w-7 h-7 sm:w-8 sm:h-8 rounded-full rainbow-bg border-2 border-white shadow transition active:scale-95 text-xs text-white flex items-center justify-center font-black" title="にじいろ">✨</button>
                     </div>
 
-                    <!-- Line Width Picker -->
-                    <div class="flex items-center space-x-1 bg-slate-100 p-1 rounded-xl">
-                        <button onclick="setLineWidth(14)" id="sizeThin" class="px-2.5 py-1 rounded-lg text-xs font-bold text-slate-600 hover:bg-white transition">ほそい</button>
-                        <button onclick="setLineWidth(22)" id="sizeMed" class="px-2.5 py-1 rounded-lg text-xs font-bold bg-white text-amber-700 shadow-sm transition">ふつう</button>
-                        <button onclick="setLineWidth(32)" id="sizeThick" class="px-2.5 py-1 rounded-lg text-xs font-bold text-slate-600 hover:bg-white transition">ふとい</button>
+                    <!-- Line Thickness Toggle -->
+                    <div class="flex items-center bg-amber-100 p-0.5 rounded-xl text-xs font-bold text-amber-900">
+                        <button onclick="setPenWidth(12, this)" class="width-btn px-2 py-1 rounded-lg transition bg-white shadow-sm">ほそい</button>
+                        <button onclick="setPenWidth(20, this)" class="width-btn px-2 py-1 rounded-lg transition text-amber-800">ふつう</button>
+                        <button onclick="setPenWidth(28, this)" class="width-btn px-2 py-1 rounded-lg transition text-amber-800">ふとい</button>
                     </div>
 
-                    <!-- Guide Opacity Toggle -->
-                    <button onclick="toggleTemplateGuide()" id="guideToggleBtn" class="bg-slate-100 hover:bg-slate-200 text-slate-700 px-2.5 py-1.5 rounded-xl text-xs font-bold transition flex items-center space-x-1">
-                        <i class="fas fa-eye"></i>
-                        <span id="guideText">おてほん：こい</span>
+                    <!-- Template Guide Density Toggle -->
+                    <button onclick="toggleGuideOpacity()" class="text-xs bg-slate-100 hover:bg-slate-200 text-slate-700 px-2.5 py-1 rounded-xl font-bold border border-slate-300 transition">
+                        おてほん: <span id="opacityLabel">こい</span>
                     </button>
                 </div>
 
-                <!-- Bottom Action Buttons -->
-                <div class="grid grid-cols-2 gap-3 w-full pt-1">
-                    <button onclick="clearUserCanvas()" class="py-3 px-4 bg-slate-200 hover:bg-slate-300 active:scale-95 text-slate-700 font-bold rounded-2xl shadow-sm transition flex items-center justify-center space-x-2 text-base">
-                        <i class="fas fa-eraser"></i>
-                        <span>ぜんぶけす</span>
+                <!-- Bottom Action Buttons (Clear & Grade) -->
+                <div class="grid grid-cols-2 gap-2 w-full pt-1">
+                    <button onclick="clearUserCanvas()" class="bg-slate-100 hover:bg-slate-200 active:scale-95 text-slate-700 py-2.5 rounded-2xl font-bold text-sm shadow border border-slate-300 transition flex items-center justify-center space-x-1.5">
+                        <i class="fas fa-eraser text-slate-500"></i>
+                        <span>けす</span>
                     </button>
-                    <button onclick="evaluateDrawing()" class="py-3 px-4 bg-emerald-500 hover:bg-emerald-600 active:scale-95 text-white font-extrabold rounded-2xl shadow-lg shadow-emerald-200 transition flex items-center justify-center space-x-2 text-lg">
+                    <button onclick="evaluateDrawing()" class="bg-emerald-500 hover:bg-emerald-600 active:scale-95 text-white py-2.5 rounded-2xl font-extrabold text-sm shadow-lg transition flex items-center justify-center space-x-1.5 border-b-4 border-emerald-700">
                         <i class="fas fa-check-circle"></i>
                         <span>できた！</span>
                     </button>
@@ -179,353 +195,187 @@
         </div>
     </main>
 
-    <!-- Footer -->
-    <footer class="text-center p-3 text-xs text-amber-700/70 font-bold">
-        しょうがく１ねんせい の ための たのしい かきかた アプリ 🌸
-    </footer>
-
-    <!-- Result Modal -->
+    <!-- Result / Evaluation Modal -->
     <div id="resultModal" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
-        <div class="bg-white rounded-3xl p-6 max-w-sm w-full text-center shadow-2xl pop-in border-4 border-amber-300 relative overflow-hidden">
-            <div id="modalHanamaruIcon" class="text-7xl my-2 animate-bounce">🌸</div>
-            <h2 id="resultTitle" class="text-2xl font-extrabold text-amber-600 mb-1">たいへん よくできました！</h2>
-            <p id="resultScoreText" class="text-slate-600 font-bold text-sm mb-4">おてほん通りに とても上手になぞれました！</p>
+        <div class="bg-white rounded-3xl p-6 max-w-xs w-full text-center border-4 border-amber-300 shadow-2xl transform transition-all scale-100 space-y-4">
+            <div id="modalHanamaru" class="text-6xl animate-bounce">🌸</div>
+            <h3 id="modalTitle" class="text-xl font-black text-amber-900">たいへんよくできました！</h3>
+            <p id="modalScore" class="text-amber-700 font-bold text-sm">ひらがな「あ」のかきかた</p>
+            <div id="modalStars" class="text-2xl text-amber-400">⭐⭐⭐</div>
             
-            <div class="flex justify-center space-x-1 text-amber-400 text-3xl mb-6" id="starContainer">
-                <i class="fas fa-star"></i>
-                <i class="fas fa-star"></i>
-                <i class="fas fa-star"></i>
-            </div>
-
-            <div class="flex flex-col space-y-2">
-                <button onclick="nextCharacter()" class="w-full py-3 bg-amber-500 hover:bg-amber-600 text-white font-extrabold rounded-2xl shadow-md text-base transition transform active:scale-95 flex items-center justify-center space-x-2">
-                    <span>つぎの もじへ</span>
-                    <i class="fas fa-arrow-right"></i>
-                </button>
-                <button onclick="closeModal()" class="w-full py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold rounded-2xl text-sm transition">
-                    もういちど れんしゅう
+            <div class="pt-2">
+                <button onclick="closeModal()" class="w-full bg-amber-400 hover:bg-amber-500 active:scale-95 text-white font-extrabold py-3 rounded-2xl shadow-md transition border-b-4 border-amber-600">
+                    つぎも がんばる！
                 </button>
             </div>
         </div>
     </div>
 
     <script>
-        // Character datasets for Hiragana, Katakana, and Numbers
+        /* Character Data Definitions */
         const CHAR_DATA = {
             hiragana: [
-                'あ','い','う','え','お',
-                'か','き','く','け','こ',
-                'さ','し','す','せ','そ',
-                'た','ち','つ','て','と',
-                'な','に','ぬ','ね','の',
-                'は','ひ','ふ','へ','ほ',
-                'ま','み','む','め','も',
-                'や','ゆ','よ',
-                'ら','り','る','れ','ろ',
-                'わ','を','ん'
+                'あ','い','う','え','お','か','き','く','け','こ',
+                'さ','し','す','せ','そ','た','ち','つ','て','と',
+                'な','に','ぬ','ね','の','は','ひ','ふ','へ','ほ',
+                'ま','み','む','め','も','や','ゆ','よ',
+                'ら','り','る','れ','ろ','わ','を','ん'
             ],
             katakana: [
-                'ア','イ','ウ','エ','オ',
-                'カ','キ','ク','ケ','コ',
-                'サ','シ','ス','セ','ソ',
-                'タ','チ','ツ','テ','ト',
-                'ナ','ニ','ヌ','ネ','ノ',
-                'ハ','ヒ','フ','ヘ','ホ',
-                'マ','ミ','ム','メ','モ',
-                'ヤ','ユ','ヨ',
-                'ラ','リ','ル','レ','ロ',
-                'ワ','ヲ','ン'
+                'ア','イ','ウ','エ','オ','カ','キ','ク','ケ','コ',
+                'サ','シ','ス','セ','ソ','タ','チ','ツ','テ','ト',
+                'ナ','ニ','ヌ','ネ','ノ','ハ','ヒ','フ','ヘ','ホ',
+                'マ','ミ','ム','メモ','ヤ','ユ','ヨ',
+                'ラ','リ','ル','レ','ロ','ワ','ヲ','ン'
             ],
-            numbers: [
-                '0','1','2','3','4',
-                '5','6','7','8','9','10'
-            ]
+            numbers: ['0','1','2','3','4','5','6','7','8','9']
         };
 
-        // Application state variables
         let currentCategory = 'hiragana';
         let currentChar = 'あ';
-        let isSoundOn = true;
-        let templateOpacityMode = 0;
-        const opacityValues = [0.22, 0.08, 0.0];
-        const opacityLabels = ['おてほん：こい', 'おてほん：うすい', 'おてほん：なし'];
-
-        // Canvas context definitions
-        let bgCanvas, templateCanvas, drawCanvas;
-        let bgCtx, templateCtx, drawCtx;
-        
-        // Drawing options
+        let guideOpacity = 0.35; // こい(0.35), うすい(0.15), なし(0)
+        let penColor = '#1e293b';
+        let penWidth = 12;
+        let isRainbow = false;
         let isDrawing = false;
         let lastX = 0;
         let lastY = 0;
-        let penColor = '#1e293b';
-        let isRainbowPen = false;
-        let rainbowHue = 0;
-        let lineWidth = 22;
 
-        // Audio synthesizer context
+        // Canvas element setup
+        const bgCanvas = document.getElementById('bgCanvas');
+        const bgCtx = bgCanvas.getContext('2d');
+        const templateCanvas = document.getElementById('templateCanvas');
+        const templateCtx = templateCanvas.getContext('2d');
+        const drawCanvas = document.getElementById('drawCanvas');
+        const drawCtx = drawCanvas.getContext('2d');
+
+        // Web Audio API Sound System
+        const AudioContext = window.AudioContext || window.webkitAudioContext;
         let audioCtx = null;
 
-        window.onload = function() {
-            initCanvases();
-            buildCharGrid();
-            selectChar(CHAR_DATA.hiragana[0], false);
-            setupCanvasEvents();
-            
-            resizeCanvas();
-            window.addEventListener('resize', resizeCanvas);
-        };
-
-        function getAudioContext() {
-            if (!audioCtx) {
-                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-            }
-            if (audioCtx.state === 'suspended') {
-                audioCtx.resume();
-            }
-            return audioCtx;
-        }
-
         function playSound(type) {
-            if (!isSoundOn) return;
             try {
-                const ctx = getAudioContext();
-                const now = ctx.currentTime;
+                if (!audioCtx) audioCtx = new AudioContext();
+                if (audioCtx.state === 'suspended') audioCtx.resume();
 
+                const now = audioCtx.currentTime;
                 if (type === 'click') {
-                    const osc = ctx.createOscillator();
-                    const gain = ctx.createGain();
+                    const osc = audioCtx.createOscillator();
+                    const gain = audioCtx.createGain();
                     osc.type = 'sine';
-                    osc.frequency.setValueAtTime(400, now);
-                    osc.frequency.exponentialRampToValueAtTime(800, now + 0.08);
+                    osc.frequency.setValueAtTime(523.25, now); // C5
+                    osc.frequency.exponentialRampToValueAtTime(880, now + 0.08);
                     gain.gain.setValueAtTime(0.15, now);
-                    gain.gain.linearRampToValueAtTime(0.01, now + 0.08);
+                    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.08);
                     osc.connect(gain);
-                    gain.connect(ctx.destination);
+                    gain.connect(audioCtx.destination);
                     osc.start(now);
                     osc.stop(now + 0.08);
                 } else if (type === 'clear') {
-                    const osc = ctx.createOscillator();
-                    const gain = ctx.createGain();
+                    const osc = audioCtx.createOscillator();
+                    const gain = audioCtx.createGain();
                     osc.type = 'triangle';
-                    osc.frequency.setValueAtTime(300, now);
-                    osc.frequency.linearRampToValueAtTime(150, now + 0.15);
+                    osc.frequency.setValueAtTime(440, now);
+                    osc.frequency.exponentialRampToValueAtTime(220, now + 0.15);
                     gain.gain.setValueAtTime(0.2, now);
-                    gain.gain.linearRampToValueAtTime(0.01, now + 0.15);
+                    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.15);
                     osc.connect(gain);
-                    gain.connect(ctx.destination);
+                    gain.connect(audioCtx.destination);
                     osc.start(now);
                     osc.stop(now + 0.15);
                 } else if (type === 'fanfare') {
-                    const notes = [523.25, 659.25, 783.99, 1046.50]; // C5, E5, G5, C6
-                    notes.forEach((freq, i) => {
-                        const osc = ctx.createOscillator();
-                        const gain = ctx.createGain();
+                    const freqs = [523.25, 659.25, 783.99, 1046.50]; // C, E, G, C
+                    freqs.forEach((freq, idx) => {
+                        const osc = audioCtx.createOscillator();
+                        const gain = audioCtx.createGain();
                         osc.type = 'triangle';
-                        osc.frequency.setValueAtTime(freq, now + i * 0.09);
-                        gain.gain.setValueAtTime(0.25, now + i * 0.09);
-                        gain.gain.exponentialRampToValueAtTime(0.001, now + i * 0.09 + 0.3);
+                        osc.frequency.setValueAtTime(freq, now + idx * 0.08);
+                        gain.gain.setValueAtTime(0.25, now + idx * 0.08);
+                        gain.gain.exponentialRampToValueAtTime(0.01, now + idx * 0.08 + 0.3);
                         osc.connect(gain);
-                        gain.connect(ctx.destination);
-                        osc.start(now + i * 0.09);
-                        osc.stop(now + i * 0.09 + 0.3);
+                        gain.connect(audioCtx.destination);
+                        osc.start(now + idx * 0.08);
+                        osc.stop(now + idx * 0.08 + 0.3);
                     });
                 }
             } catch (e) {
-                console.log("Audio play error:", e);
-            }
-        }
-
-        function toggleSound() {
-            isSoundOn = !isSoundOn;
-            const icon = document.getElementById('soundIcon');
-            const text = document.getElementById('soundText');
-            if (isSoundOn) {
-                icon.className = 'fas fa-volume-high';
-                text.textContent = 'おと ON';
-                playSound('click');
-            } else {
-                icon.className = 'fas fa-volume-xmark';
-                text.textContent = 'おと OFF';
+                console.log('Audio Context Error:', e);
             }
         }
 
         function speakCurrentChar() {
             if (!('speechSynthesis' in window)) return;
-            window.speechSynthesis.cancel();
-            
-            // 1文字だけだと聞き取りにくいため、ゆっくり2回繰り返して発音します
+            window.speechSynthesis.cancel(); // Stop ongoing speech
+
+            // ゆっくり・はっきり読み上げるため「あ…… あ」の形式にする
             const textToSpeak = `${currentChar}…… ${currentChar}`;
-            const utterance = new SpeechSynthesisUtterance(textToSpeak);
-            utterance.lang = 'ja-JP';
-            utterance.rate = 0.75; // 少しゆっくりめにして聞き取りやすく
-            utterance.pitch = 1.1;
-            window.speechSynthesis.speak(utterance);
+            const uttr = new SpeechSynthesisUtterance(textToSpeak);
+            uttr.lang = 'ja-JP';
+            uttr.rate = 0.8;  // 少しゆっくり
+            uttr.pitch = 1.2; // こどもに聞き取りやすいトーン
+            window.speechSynthesis.speak(uttr);
         }
 
-        function initCanvases() {
-            bgCanvas = document.getElementById('bgCanvas');
-            templateCanvas = document.getElementById('templateCanvas');
-            drawCanvas = document.getElementById('drawCanvas');
-
-            bgCtx = bgCanvas.getContext('2d');
-            templateCtx = templateCanvas.getContext('2d');
-            drawCtx = drawCanvas.getContext('2d');
-        }
-
-        function resizeCanvas() {
-            const container = bgCanvas.parentElement;
-            const rect = container.getBoundingClientRect();
-            const size = rect.width;
-
-            [bgCanvas, templateCanvas, drawCanvas].forEach(canvas => {
-                canvas.width = size;
-                canvas.height = size;
-            });
-
-            drawBackgroundGrid();
-            drawTemplateText();
-        }
-
-        // Draw Japanese manuscript style 2x2 grid with dotted cross
-        function drawBackgroundGrid() {
+        function drawNotebookGrid() {
             const w = bgCanvas.width;
             const h = bgCanvas.height;
-            bgCtx.clearRect(0, 0, w, h);
 
+            bgCtx.clearRect(0, 0, w, h);
+            
+            // White Background
             bgCtx.fillStyle = '#ffffff';
             bgCtx.fillRect(0, 0, w, h);
 
-            bgCtx.strokeStyle = '#fcd34d';
-            bgCtx.lineWidth = 6;
-            bgCtx.strokeRect(3, 3, w - 6, h - 6);
+            // Red Outer Border
+            bgCtx.strokeStyle = '#f87171';
+            bgCtx.lineWidth = 4;
+            bgCtx.strokeRect(2, 2, w - 4, h - 4);
 
-            bgCtx.beginPath();
-            bgCtx.strokeStyle = '#fef08a';
-            bgCtx.lineWidth = 3;
+            // Dashed Center Cross Lines (2x2 grid)
+            bgCtx.strokeStyle = '#fca5a5';
+            bgCtx.lineWidth = 2;
             bgCtx.setLineDash([8, 6]);
 
+            // Vertical centerline
+            bgCtx.beginPath();
             bgCtx.moveTo(w / 2, 0);
             bgCtx.lineTo(w / 2, h);
+            bgCtx.stroke();
 
+            // Horizontal centerline
+            bgCtx.beginPath();
             bgCtx.moveTo(0, h / 2);
             bgCtx.lineTo(w, h / 2);
-
             bgCtx.stroke();
-            bgCtx.setLineDash([]);
+
+            bgCtx.setLineDash([]); // Reset line dash
         }
 
         function drawTemplateText() {
             const w = templateCanvas.width;
             const h = templateCanvas.height;
+
             templateCtx.clearRect(0, 0, w, h);
+            if (guideOpacity <= 0) return;
 
-            const opacity = opacityValues[templateOpacityMode];
-            if (opacity === 0) return;
-
-            templateCtx.fillStyle = `rgba(30, 41, 59, ${opacity})`;
+            templateCtx.fillStyle = `rgba(51, 65, 85, ${guideOpacity})`;
+            templateCtx.font = 'bold 220px "M PLUS Rounded 1c", "Hiragino Kaku Gothic ProN", sans-serif';
             templateCtx.textAlign = 'center';
             templateCtx.textBaseline = 'middle';
-
-            const fontSize = w * 0.72;
-            templateCtx.font = `bold ${fontSize}px "M PLUS Rounded 1c", "Hiragino Kaku Gothic ProN", "Meiryo", sans-serif`;
-
-            templateCtx.fillText(currentChar, w / 2, h / 2 + fontSize * 0.04);
-        }
-
-        function switchCategory(category) {
-            playSound('click');
-            currentCategory = category;
-
-            ['hiragana', 'katakana', 'numbers'].forEach(cat => {
-                const tab = document.getElementById('tab' + cat.charAt(0).toUpperCase() + cat.slice(1));
-                if (cat === category) {
-                    tab.className = 'flex-1 py-2 rounded-xl font-bold text-base sm:text-lg transition-all text-amber-900 bg-white shadow-sm';
-                } else {
-                    tab.className = 'flex-1 py-2 rounded-xl font-bold text-base sm:text-lg transition-all text-amber-800 hover:bg-white/50';
-                }
-            });
-
-            const typeLabels = { hiragana: 'ひらがな', katakana: 'カタカナ', numbers: 'すうじ' };
-            document.getElementById('currentCharType').textContent = typeLabels[category];
-
-            buildCharGrid();
-            selectChar(CHAR_DATA[category][0], false);
-        }
-
-        function buildCharGrid() {
-            const grid = document.getElementById('charGrid');
-            grid.innerHTML = '';
-
-            CHAR_DATA[currentCategory].forEach(ch => {
-                const btn = document.createElement('button');
-                btn.className = `aspect-square flex items-center justify-center text-xl font-bold rounded-xl transition border ${
-                    ch === currentChar
-                        ? 'bg-amber-400 text-white border-amber-500 shadow-md scale-105'
-                        : 'bg-amber-50 hover:bg-amber-100 text-amber-900 border-amber-200'
-                }`;
-                btn.textContent = ch;
-                btn.onclick = () => {
-                    playSound('click');
-                    selectChar(ch, true);
-                };
-                grid.appendChild(btn);
-            });
-        }
-
-        function selectChar(ch, shouldScroll = true) {
-            currentChar = ch;
-            document.getElementById('currentCharDisplay').textContent = ch;
-
-            const buttons = document.getElementById('charGrid').querySelectorAll('button');
-            buttons.forEach(btn => {
-                if (btn.textContent === ch) {
-                    btn.className = 'aspect-square flex items-center justify-center text-xl font-bold rounded-xl transition border bg-amber-400 text-white border-amber-500 shadow-md scale-105';
-                } else {
-                    btn.className = 'aspect-square flex items-center justify-center text-xl font-bold rounded-xl transition border bg-amber-50 hover:bg-amber-100 text-amber-900 border-amber-200';
-                }
-            });
-
-            clearUserCanvas();
-            drawTemplateText();
-            speakCurrentChar();
-
-            // スマホやタブレットなどで文字を選んだ際、すぐに書けるようキャンバスへ画面をスクロールします
-            if (shouldScroll) {
-                const writingArea = document.querySelector('.canvas-container');
-                if (writingArea && window.innerWidth < 768) {
-                    writingArea.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                }
-            }
-        }
-
-        function setupCanvasEvents() {
-            drawCanvas.addEventListener('mousedown', startDrawing);
-            drawCanvas.addEventListener('mousemove', draw);
-            drawCanvas.addEventListener('mouseup', stopDrawing);
-            drawCanvas.addEventListener('mouseleave', stopDrawing);
-
-            drawCanvas.addEventListener('touchstart', (e) => {
-                e.preventDefault();
-                startDrawing(e.touches[0]);
-            }, { passive: false });
-
-            drawCanvas.addEventListener('touchmove', (e) => {
-                e.preventDefault();
-                draw(e.touches[0]);
-            }, { passive: false });
-
-            drawCanvas.addEventListener('touchend', (e) => {
-                e.preventDefault();
-                stopDrawing();
-            }, { passive: false });
+            templateCtx.fillText(currentChar, w / 2, h / 2 + 10);
         }
 
         function getCanvasCoordinates(e) {
             const rect = drawCanvas.getBoundingClientRect();
+            const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+            const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+            
+            const scaleX = drawCanvas.width / rect.width;
+            const scaleY = drawCanvas.height / rect.height;
+
             return {
-                x: (e.clientX - rect.left) * (drawCanvas.width / rect.width),
-                y: (e.clientY - rect.top) * (drawCanvas.height / rect.height)
+                x: (clientX - rect.left) * scaleX,
+                y: (clientY - rect.top) * scaleY
             };
         }
 
@@ -535,22 +385,24 @@
             lastX = coords.x;
             lastY = coords.y;
 
+            // Dot on single touch tap
             drawCtx.beginPath();
-            drawCtx.arc(lastX, lastY, lineWidth / 2, 0, Math.PI * 2);
-            drawCtx.fillStyle = getCurrentPenStyle();
+            drawCtx.arc(lastX, lastY, penWidth / 2, 0, Math.PI * 2);
+            drawCtx.fillStyle = isRainbow ? getRainbowColor() : penColor;
             drawCtx.fill();
         }
 
         function draw(e) {
             if (!isDrawing) return;
+            e.preventDefault();
+
             const coords = getCanvasCoordinates(e);
 
             drawCtx.beginPath();
             drawCtx.moveTo(lastX, lastY);
             drawCtx.lineTo(coords.x, coords.y);
-
-            drawCtx.strokeStyle = getCurrentPenStyle();
-            drawCtx.lineWidth = lineWidth;
+            drawCtx.strokeStyle = isRainbow ? getRainbowColor() : penColor;
+            drawCtx.lineWidth = penWidth;
             drawCtx.lineCap = 'round';
             drawCtx.lineJoin = 'round';
             drawCtx.stroke();
@@ -563,54 +415,146 @@
             isDrawing = false;
         }
 
-        function getCurrentPenStyle() {
-            if (isRainbowPen) {
-                rainbowHue = (rainbowHue + 3) % 360;
-                return `hsl(${rainbowHue}, 90%, 55%)`;
-            }
-            return penColor;
+        let rainbowHue = 0;
+        function getRainbowColor() {
+            rainbowHue = (rainbowHue + 10) % 360;
+            return `hsl(${rainbowHue}, 90%, 50%)`;
         }
 
-        function setPenColor(color) {
-            playSound('click');
-            if (color === 'rainbow') {
-                isRainbowPen = true;
-            } else {
-                isRainbowPen = false;
-                penColor = color;
-            }
+        function switchCategory(cat) {
+            currentCategory = cat;
+            currentChar = CHAR_DATA[cat][0];
 
-            const btns = document.querySelectorAll('.color-btn');
-            btns.forEach(btn => {
-                if (btn.dataset.color === color) {
-                    btn.classList.add('ring-2', 'ring-offset-2', 'ring-amber-500');
+            // Tab button styles update
+            ['Hiragana', 'Katakana', 'Numbers'].forEach(type => {
+                const tab = document.getElementById('tab' + type);
+                if (type.toLowerCase() === cat) {
+                    tab.className = 'flex-1 py-1.5 rounded-xl font-bold transition-all text-amber-900 bg-white shadow-sm';
                 } else {
-                    btn.classList.remove('ring-2', 'ring-offset-2', 'ring-amber-500');
+                    tab.className = 'flex-1 py-1.5 rounded-xl font-bold transition-all text-amber-800 hover:bg-white/50';
+                }
+            });
+
+            // Update label
+            const labelMap = { hiragana: 'ひらがな', katakana: 'カタカナ', numbers: 'すうじ' };
+            document.getElementById('currentCharType').textContent = labelMap[cat];
+
+            buildCharGrid();
+            selectChar(currentChar, false);
+        }
+
+        function buildCharGrid() {
+            const grid = document.getElementById('charGrid');
+            const mobileBar = document.getElementById('mobileCharBar');
+
+            if (grid) grid.innerHTML = '';
+            if (mobileBar) mobileBar.innerHTML = '';
+
+            CHAR_DATA[currentCategory].forEach(ch => {
+                // Desktop Grid Buttons
+                if (grid) {
+                    const btn = document.createElement('button');
+                    btn.className = `aspect-square flex items-center justify-center text-xl font-bold rounded-xl transition border ${
+                        ch === currentChar
+                            ? 'bg-amber-400 text-white border-amber-500 shadow-md scale-105'
+                            : 'bg-amber-50 hover:bg-amber-100 text-amber-900 border-amber-200'
+                    }`;
+                    btn.textContent = ch;
+                    btn.onclick = () => {
+                        playSound('click');
+                        selectChar(ch, false);
+                    };
+                    grid.appendChild(btn);
+                }
+
+                // Mobile Horizontal Bar Buttons
+                if (mobileBar) {
+                    const mBtn = document.createElement('button');
+                    mBtn.className = `flex-shrink-0 w-10 h-10 flex items-center justify-center text-base font-bold rounded-xl transition border ${
+                        ch === currentChar
+                            ? 'bg-amber-400 text-white border-amber-500 shadow-md scale-105'
+                            : 'bg-white hover:bg-amber-50 text-amber-900 border-amber-200'
+                    }`;
+                    mBtn.textContent = ch;
+                    mBtn.onclick = () => {
+                        playSound('click');
+                        selectChar(ch, false);
+                    };
+                    mobileBar.appendChild(mBtn);
                 }
             });
         }
 
-        function setLineWidth(width) {
-            playSound('click');
-            lineWidth = width;
+        function selectChar(ch, shouldScroll = false) {
+            currentChar = ch;
+            document.getElementById('currentCharDisplay').textContent = ch;
 
-            const btnThin = document.getElementById('sizeThin');
-            const btnMed = document.getElementById('sizeMed');
-            const btnThick = document.getElementById('sizeThick');
+            // Desktop selection state
+            const grid = document.getElementById('charGrid');
+            if (grid) {
+                grid.querySelectorAll('button').forEach(btn => {
+                    if (btn.textContent === ch) {
+                        btn.className = 'aspect-square flex items-center justify-center text-xl font-bold rounded-xl transition border bg-amber-400 text-white border-amber-500 shadow-md scale-105';
+                    } else {
+                        btn.className = 'aspect-square flex items-center justify-center text-xl font-bold rounded-xl transition border bg-amber-50 hover:bg-amber-100 text-amber-900 border-amber-200';
+                    }
+                });
+            }
 
-            [btnThin, btnMed, btnThick].forEach(btn => {
-                btn.className = 'px-2.5 py-1 rounded-lg text-xs font-bold text-slate-600 hover:bg-white transition';
-            });
+            // Mobile selection state
+            const mobileBar = document.getElementById('mobileCharBar');
+            if (mobileBar) {
+                mobileBar.querySelectorAll('button').forEach(btn => {
+                    if (btn.textContent === ch) {
+                        btn.className = 'flex-shrink-0 w-10 h-10 flex items-center justify-center text-base font-bold rounded-xl transition border bg-amber-400 text-white border-amber-500 shadow-md scale-105';
+                        btn.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+                    } else {
+                        btn.className = 'flex-shrink-0 w-10 h-10 flex items-center justify-center text-base font-bold rounded-xl transition border bg-white hover:bg-amber-50 text-amber-900 border-amber-200';
+                    }
+                });
+            }
 
-            if (width === 14) btnThin.className = 'px-2.5 py-1 rounded-lg text-xs font-bold bg-white text-amber-700 shadow-sm transition';
-            if (width === 22) btnMed.className = 'px-2.5 py-1 rounded-lg text-xs font-bold bg-white text-amber-700 shadow-sm transition';
-            if (width === 32) btnThick.className = 'px-2.5 py-1 rounded-lg text-xs font-bold bg-white text-amber-700 shadow-sm transition';
+            clearUserCanvas();
+            drawTemplateText();
+            speakCurrentChar();
         }
 
-        function toggleTemplateGuide() {
+        function setPenColor(color, btn) {
             playSound('click');
-            templateOpacityMode = (templateOpacityMode + 1) % opacityValues.length;
-            document.getElementById('guideText').textContent = opacityLabels[templateOpacityMode];
+            if (color === 'rainbow') {
+                isRainbow = true;
+            } else {
+                isRainbow = false;
+                penColor = color;
+            }
+
+            document.querySelectorAll('.color-btn').forEach(b => {
+                b.classList.remove('ring-2', 'ring-slate-800', 'scale-110');
+            });
+            btn.classList.add('ring-2', 'ring-slate-800', 'scale-110');
+        }
+
+        function setPenWidth(w, btn) {
+            playSound('click');
+            penWidth = w;
+            document.querySelectorAll('.width-btn').forEach(b => {
+                b.className = 'width-btn px-2 py-1 rounded-lg transition text-amber-800';
+            });
+            btn.className = 'width-btn px-2 py-1 rounded-lg transition bg-white shadow-sm font-bold text-amber-900';
+        }
+
+        function toggleGuideOpacity() {
+            playSound('click');
+            if (guideOpacity === 0.35) {
+                guideOpacity = 0.15;
+                document.getElementById('opacityLabel').textContent = 'うすい';
+            } else if (guideOpacity === 0.15) {
+                guideOpacity = 0;
+                document.getElementById('opacityLabel').textContent = 'なし';
+            } else {
+                guideOpacity = 0.35;
+                document.getElementById('opacityLabel').textContent = 'こい';
+            }
             drawTemplateText();
         }
 
@@ -620,128 +564,95 @@
         }
 
         function evaluateDrawing() {
-            const w = drawCanvas.width;
-            const h = drawCanvas.height;
-
+            // Render hidden guide text for stroke overlap evaluation
             const evalCanvas = document.createElement('canvas');
-            evalCanvas.width = w;
-            evalCanvas.height = h;
+            evalCanvas.width = 320;
+            evalCanvas.height = 320;
             const evalCtx = evalCanvas.getContext('2d');
 
-            const fontSize = w * 0.72;
-            evalCtx.font = `bold ${fontSize}px "M PLUS Rounded 1c", "Hiragino Kaku Gothic ProN", "Meiryo", sans-serif`;
+            evalCtx.fillStyle = '#000000';
+            evalCtx.font = 'bold 220px "M PLUS Rounded 1c", "Hiragino Kaku Gothic ProN", sans-serif';
             evalCtx.textAlign = 'center';
             evalCtx.textBaseline = 'middle';
-            evalCtx.fillStyle = '#000000';
-            evalCtx.fillText(currentChar, w / 2, h / 2 + fontSize * 0.04);
+            evalCtx.fillText(currentChar, 160, 170);
 
-            const templateImgData = evalCtx.getImageData(0, 0, w, h).data;
-            const userImgData = drawCtx.getImageData(0, 0, w, h).data;
+            const guideImg = evalCtx.getImageData(0, 0, 320, 320).data;
+            const userImg = drawCtx.getImageData(0, 0, 320, 320).data;
 
-            let templatePixelCount = 0;
-            let userPixelCount = 0;
-            let overlapPixelCount = 0;
+            let guidePixels = 0;
+            let matchPixels = 0;
+            let userPixels = 0;
 
-            for (let i = 3; i < templateImgData.length; i += 16) {
-                const hasTemplate = templateImgData[i] > 50;
-                const hasUser = userImgData[i] > 50;
+            for (let i = 0; i < guideImg.length; i += 4) {
+                const guideAlpha = guideImg[i + 3];
+                const userAlpha = userImg[i + 3];
 
-                if (hasTemplate) templatePixelCount++;
-                if (hasUser) userPixelCount++;
-                if (hasTemplate && hasUser) overlapPixelCount++;
+                if (guideAlpha > 50) guidePixels++;
+                if (userAlpha > 50) {
+                    userPixels++;
+                    if (guideAlpha > 50) matchPixels++;
+                }
             }
 
-            if (userPixelCount < 100) {
-                showResultModal('try_again');
+            if (userPixels < 50) {
+                // Empty stroke check
+                showModal('もういちど かいてみよう！', 'まだ なにも かかれていないよ ✏️', '⭐', '🌸');
                 return;
             }
 
-            const coverage = overlapPixelCount / templatePixelCount;
-            const precision = overlapPixelCount / userPixelCount;
+            const coverage = matchPixels / (guidePixels || 1);
+            const accuracy = matchPixels / (userPixels || 1);
+            const score = Math.round((coverage * 0.7 + accuracy * 0.3) * 100);
 
-            if (coverage > 0.45 && precision > 0.3) {
-                showResultModal('perfect');
-            } else if (coverage > 0.25 && precision > 0.15) {
-                showResultModal('good');
-            } else {
-                showResultModal('try_again');
-            }
-        }
-
-        function showResultModal(grade) {
-            const modal = document.getElementById('resultModal');
-            const title = document.getElementById('resultTitle');
-            const scoreText = document.getElementById('resultScoreText');
-            const icon = document.getElementById('modalHanamaruIcon');
-            const starContainer = document.getElementById('starContainer');
-
-            modal.classList.remove('hidden');
-
-            if (grade === 'perfect') {
+            if (score >= 40) {
                 playSound('fanfare');
-                triggerConfetti();
-                icon.textContent = '🌸';
-                title.textContent = 'たいへん よくできました！';
-                title.className = 'text-2xl sm:text-3xl font-extrabold text-amber-600 mb-1';
-                scoreText.textContent = `「${currentChar}」を とても じょうずに かけました！`;
-                starContainer.innerHTML = `
-                    <i class="fas fa-star text-amber-400"></i>
-                    <i class="fas fa-star text-amber-400"></i>
-                    <i class="fas fa-star text-amber-400"></i>
-                `;
-            } else if (grade === 'good') {
-                playSound('fanfare');
-                icon.textContent = '💮';
-                title.textContent = 'よくできました！';
-                title.className = 'text-2xl sm:text-3xl font-extrabold text-emerald-600 mb-1';
-                scoreText.textContent = `いい かんじ！ もうすこしで かんぺきです！`;
-                starContainer.innerHTML = `
-                    <i class="fas fa-star text-amber-400"></i>
-                    <i class="fas fa-star text-amber-400"></i>
-                    <i class="far fa-star text-slate-300"></i>
-                `;
-            } else {
-                playSound('click');
-                icon.textContent = '✏️';
-                title.textContent = 'もういちど がんばろう！';
-                title.className = 'text-2xl sm:text-3xl font-extrabold text-blue-600 mb-1';
-                scoreText.textContent = `おてほんを しっかり なぞってみよう！`;
-                starContainer.innerHTML = `
-                    <i class="fas fa-star text-amber-400"></i>
-                    <i class="far fa-star text-slate-300"></i>
-                    <i class="far fa-star text-slate-300"></i>
-                `;
-            }
-        }
-
-        function triggerConfetti() {
-            if (typeof confetti === 'function') {
                 confetti({
-                    particleCount: 70,
-                    spread: 60,
+                    particleCount: 80,
+                    spread: 70,
                     origin: { y: 0.6 }
                 });
+
+                if (score >= 65) {
+                    showModal('たいへんよくできました！', `「${currentChar}」の かきかた ばっちり！`, '⭐⭐⭐', '💮');
+                } else {
+                    showModal('よくできました！', `「${currentChar}」が きれいに かけたね！`, '⭐⭐', '🌸');
+                }
+            } else {
+                playSound('click');
+                showModal('あとすこし！', 'おてほんを よくみて もういちど かいてみよう！', '⭐', '✏️');
             }
+        }
+
+        function showModal(title, subtitle, stars, icon) {
+            document.getElementById('modalTitle').textContent = title;
+            document.getElementById('modalScore').textContent = subtitle;
+            document.getElementById('modalStars').textContent = stars;
+            document.getElementById('modalHanamaru').textContent = icon;
+            document.getElementById('resultModal').classList.remove('hidden');
         }
 
         function closeModal() {
             playSound('click');
             document.getElementById('resultModal').classList.add('hidden');
+            clearUserCanvas();
         }
 
-        function nextCharacter() {
-            closeModal();
-            const list = CHAR_DATA[currentCategory];
-            const currentIndex = list.indexOf(currentChar);
-            const nextIndex = (currentIndex + 1) % list.length;
-            selectChar(list[nextIndex], true);
-        }
-    </script>
-</body>
-</html>
-            const nextIndex = (currentIndex + 1) % list.length;
-            selectChar(list[nextIndex]);
-        }
+        // Attach Canvas Event Listeners
+        drawCanvas.addEventListener('mousedown', startDrawing);
+        drawCanvas.addEventListener('mousemove', draw);
+        drawCanvas.addEventListener('mouseup', stopDrawing);
+        drawCanvas.addEventListener('mouseleave', stopDrawing);
+
+        drawCanvas.addEventListener('touchstart', startDrawing, { passive: false });
+        drawCanvas.addEventListener('touchmove', draw, { passive: false });
+        drawCanvas.addEventListener('touchend', stopDrawing);
+
+        // Application Initialization on Window Load
+        window.onload = function() {
+            drawNotebookGrid();
+            buildCharGrid();
+            selectChar('あ', false);
+        };
     </script>
 </body>
 </html>
