@@ -100,7 +100,7 @@
         <div class="flex items-center space-x-2">
             <span class="text-xl md:text-2xl animate-bounce-gentle">✏️</span>
             <h1 class="text-base sm:text-lg md:text-xl font-black text-amber-900 tracking-wide font-kyokasho">
-                たのしく かきかた れんしゅう！
+                たのしくかきかたれんしゅう！
             </h1>
         </div>
     </header>
