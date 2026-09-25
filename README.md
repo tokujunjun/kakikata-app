@@ -103,10 +103,6 @@
                 たのしく かきかた れんしゅう！
             </h1>
         </div>
-        <button onclick="speakCurrentChar()" class="bg-amber-100 hover:bg-amber-200 active:scale-95 text-amber-900 px-3 py-1.5 rounded-full text-xs md:text-sm font-bold border border-amber-300 transition flex items-center space-x-1.5 shadow-sm">
-            <i class="fas fa-volume-high text-amber-600"></i>
-            <span>おと</span>
-        </button>
     </header>
 
     <main class="max-w-5xl w-full mx-auto px-3 sm:px-6 py-4 flex-grow flex flex-col md:flex-row gap-4 md:gap-6 items-start">
@@ -325,11 +321,10 @@
             if (!('speechSynthesis' in window)) return;
             window.speechSynthesis.cancel(); // Stop active speech
 
-            // 「あ…… あ」の形式でゆっくりはっきり2回発音
-            const textToSpeak = `${currentChar}…… ${currentChar}`;
-            const uttr = new SpeechSynthesisUtterance(textToSpeak);
+            // ゆっくり1回だけ発音
+            const uttr = new SpeechSynthesisUtterance(currentChar);
             uttr.lang = 'ja-JP';
-            uttr.rate = 0.8;
+            uttr.rate = 0.7; // ゆっくり発音
             uttr.pitch = 1.2;
             window.speechSynthesis.speak(uttr);
         }
