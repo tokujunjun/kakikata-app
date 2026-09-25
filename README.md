@@ -4,7 +4,7 @@
 
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>たのしくかきかたれんしゅう！</title>
+    <title>かきかた れんしゅう！</title>
     
     <!-- Tailwind CSS for styling -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -100,7 +100,7 @@
         <div class="flex items-center space-x-2">
             <span class="text-xl md:text-2xl animate-bounce-gentle">✏️</span>
             <h1 class="text-base sm:text-lg md:text-xl font-black text-amber-900 tracking-wide font-kyokasho">
-                たのしくかきかたれんしゅう！
+                かきかた れんしゅう！
             </h1>
         </div>
     </header>
@@ -214,9 +214,14 @@
             <p id="modalScore" class="text-amber-700 font-bold text-sm">ひらがな「あ」のかきかた</p>
             <div id="modalStars" class="text-2xl text-amber-400">⭐⭐⭐</div>
             
-            <div class="pt-2">
-                <button onclick="closeModal()" class="w-full bg-amber-400 hover:bg-amber-500 active:scale-95 text-white font-extrabold py-3 rounded-2xl shadow-md transition border-b-4 border-amber-600">
-                    つぎも がんばる！
+            <div class="pt-2 flex flex-col space-y-2">
+                <button onclick="nextChar()" class="w-full bg-emerald-500 hover:bg-emerald-600 active:scale-95 text-white font-extrabold py-3 rounded-2xl shadow-md transition border-b-4 border-emerald-700 flex items-center justify-center space-x-2 text-base">
+                    <span>つぎの もじへ</span>
+                    <i class="fas fa-arrow-right"></i>
+                </button>
+                <button onclick="retryChar()" class="w-full bg-amber-400 hover:bg-amber-500 active:scale-95 text-white font-extrabold py-2.5 rounded-2xl shadow-md transition border-b-4 border-amber-600 flex items-center justify-center space-x-2 text-sm">
+                    <i class="fas fa-redo"></i>
+                    <span>もういちど かく</span>
                 </button>
             </div>
         </div>
@@ -631,10 +636,39 @@
             document.getElementById('resultModal').classList.remove('hidden');
         }
 
-        function closeModal() {
+        function retryChar() {
             playSound('click');
             document.getElementById('resultModal').classList.add('hidden');
             clearUserCanvas();
+        }
+
+        function getNextChar() {
+            const matrix = GOJUON_MATRIX[currentCategory];
+            if (!matrix || !matrix[0]) return currentChar;
+
+            const list = [];
+            const numCols = matrix[0].length;
+            for (let col = 0; col < numCols; col++) {
+                for (let row = 0; row < matrix.length; row++) {
+                    const ch = matrix[row][col];
+                    if (ch && ch !== ' ') {
+                        list.push(ch);
+                    }
+                }
+            }
+
+            const idx = list.indexOf(currentChar);
+            if (idx !== -1 && idx + 1 < list.length) {
+                return list[idx + 1];
+            }
+            return list[0]; // 最後の文字の場合は最初（あ / ア / 1）に戻る
+        }
+
+        function nextChar() {
+            playSound('click');
+            document.getElementById('resultModal').classList.add('hidden');
+            const next = getNextChar();
+            selectChar(next);
         }
 
         // Canvas touch & mouse event listeners
