@@ -1,4 +1,4 @@
-# かきかたれんしゅうアプリ
+<!DOCTYPE html>
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
@@ -69,13 +69,13 @@
 
     <header class="bg-amber-400 text-white shadow-md p-3 sm:p-4 text-center sticky top-0 z-20">
         <div class="max-w-4xl mx-auto flex justify-between items-center">
-            <div class="flex items-center space-x-2">
-                <span class="text-2xl sm:text-3xl">✏️</span>
-                <h1 class="text-xl sm:text-2xl font-extrabold tracking-wide drop-shadow-sm">かきかた れんしゅう</h1>
+            <div class="flex items-center space-x-1.5 sm:space-x-2">
+                <span class="text-lg sm:text-3xl">✏️</span>
+                <h1 class="text-base sm:text-2xl font-extrabold tracking-wide drop-shadow-sm whitespace-nowrap">たのしく かきかた れんしゅう！</h1>
             </div>
             <!-- Audio toggle button -->
             <div class="flex items-center space-x-2">
-                <button id="soundToggleBtn" onclick="toggleSound()" class="bg-amber-500 hover:bg-amber-600 text-white px-3 py-1.5 rounded-full font-bold text-sm shadow transition flex items-center space-x-1">
+                <button id="soundToggleBtn" onclick="toggleSound()" class="bg-amber-500 hover:bg-amber-600 text-white px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-full font-bold text-xs sm:text-sm shadow transition flex items-center space-x-1">
                     <i class="fas fa-volume-high" id="soundIcon"></i>
                     <span id="soundText" class="hidden sm:inline">おと ON</span>
                 </button>
@@ -184,6 +184,7 @@
         しょうがく１ねんせい の ための たのしい かきかた アプリ 🌸
     </footer>
 
+    <!-- Result Modal -->
     <div id="resultModal" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
         <div class="bg-white rounded-3xl p-6 max-w-sm w-full text-center shadow-2xl pop-in border-4 border-amber-300 relative overflow-hidden">
             <div id="modalHanamaruIcon" class="text-7xl my-2 animate-bounce">🌸</div>
@@ -268,7 +269,7 @@
         window.onload = function() {
             initCanvases();
             buildCharGrid();
-            selectChar(CHAR_DATA.hiragana[0]);
+            selectChar(CHAR_DATA.hiragana[0], false);
             setupCanvasEvents();
             
             resizeCanvas();
@@ -353,9 +354,11 @@
             if (!('speechSynthesis' in window)) return;
             window.speechSynthesis.cancel();
             
-            const utterance = new SpeechSynthesisUtterance(currentChar);
+            // 1文字だけだと聞き取りにくいため、ゆっくり2回繰り返して発音します
+            const textToSpeak = `${currentChar}…… ${currentChar}`;
+            const utterance = new SpeechSynthesisUtterance(textToSpeak);
             utterance.lang = 'ja-JP';
-            utterance.rate = 0.85;
+            utterance.rate = 0.75; // 少しゆっくりめにして聞き取りやすく
             utterance.pitch = 1.1;
             window.speechSynthesis.speak(utterance);
         }
@@ -447,7 +450,7 @@
             document.getElementById('currentCharType').textContent = typeLabels[category];
 
             buildCharGrid();
-            selectChar(CHAR_DATA[category][0]);
+            selectChar(CHAR_DATA[category][0], false);
         }
 
         function buildCharGrid() {
@@ -464,13 +467,13 @@
                 btn.textContent = ch;
                 btn.onclick = () => {
                     playSound('click');
-                    selectChar(ch);
+                    selectChar(ch, true);
                 };
                 grid.appendChild(btn);
             });
         }
 
-        function selectChar(ch) {
+        function selectChar(ch, shouldScroll = true) {
             currentChar = ch;
             document.getElementById('currentCharDisplay').textContent = ch;
 
@@ -486,6 +489,14 @@
             clearUserCanvas();
             drawTemplateText();
             speakCurrentChar();
+
+            // スマホやタブレットなどで文字を選んだ際、すぐに書けるようキャンバスへ画面をスクロールします
+            if (shouldScroll) {
+                const writingArea = document.querySelector('.canvas-container');
+                if (writingArea && window.innerWidth < 768) {
+                    writingArea.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }
+            }
         }
 
         function setupCanvasEvents() {
@@ -640,22 +651,20 @@
                 if (hasTemplate && hasUser) overlapPixelCount++;
             }
 
-            if (userPixelCount < 30) {
-                showResultModal('more');
+            if (userPixelCount < 100) {
+                showResultModal('try_again');
                 return;
             }
 
-            const coverageRatio = overlapPixelCount / Math.max(templatePixelCount, 1);
-            const precisionRatio = overlapPixelCount / Math.max(userPixelCount, 1);
+            const coverage = overlapPixelCount / templatePixelCount;
+            const precision = overlapPixelCount / userPixelCount;
 
-            const totalScore = (coverageRatio * 0.65 + precisionRatio * 0.35) * 100;
-
-            if (totalScore >= 35 || (coverageRatio > 0.4)) {
+            if (coverage > 0.45 && precision > 0.3) {
                 showResultModal('perfect');
-            } else if (totalScore >= 20) {
+            } else if (coverage > 0.25 && precision > 0.15) {
                 showResultModal('good');
             } else {
-                showResultModal('more');
+                showResultModal('try_again');
             }
         }
 
@@ -724,6 +733,12 @@
             closeModal();
             const list = CHAR_DATA[currentCategory];
             const currentIndex = list.indexOf(currentChar);
+            const nextIndex = (currentIndex + 1) % list.length;
+            selectChar(list[nextIndex], true);
+        }
+    </script>
+</body>
+</html>
             const nextIndex = (currentIndex + 1) % list.length;
             selectChar(list[nextIndex]);
         }
